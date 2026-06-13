@@ -35,6 +35,10 @@ const guestJoinName = ref('')
 const guestJoinToast = ref(false)
 const guestJoinToastName = ref('')
 
+const refreshRoom = () => {
+  loadRoom(roomId.value)
+}
+
 const handleGuestJoin = () => {
   if (!guestJoinCode.value.trim() || !guestJoinName.value.trim()) return
   
@@ -63,11 +67,18 @@ const closeGuestModal = () => {
   error.value = null
 }
 
-const currentPlayerName = computed(() => {
-  if (currentRoom.value) {
-    return getCurrentPlayer(currentRoom.value)
+const displayPlayerIndex = computed(() => {
+  if (!currentRoom.value || currentRoom.value.members.length === 0) return 0
+  const n = currentRoom.value.members.length
+  if (showTruthOrDare.value) {
+    return ((currentRoom.value.currentTurn - 1) % n + n) % n
   }
-  return ''
+  return currentRoom.value.currentTurn % n
+})
+
+const currentPlayerName = computed(() => {
+  if (!currentRoom.value || currentRoom.value.members.length === 0) return ''
+  return currentRoom.value.members[displayPlayerIndex.value]?.name || ''
 })
 
 const hasUnflippedTopics = computed(() => {
@@ -94,7 +105,9 @@ const handleFlipCard = () => {
   if (isFlipping.value || isShuffling.value) return
   
   const topic = flipNextCard(roomId.value)
-  if (!topic) {
+  if (topic) {
+    refreshRoom()
+  } else {
     alert('所有话题都聊完了！点急救试试吧～')
   }
 }
@@ -106,6 +119,7 @@ const handleEmergency = () => {
   if (topic) {
     currentTopic.value = topic
     showTruthOrDare.value = true
+    refreshRoom()
   }
 }
 
@@ -114,6 +128,7 @@ const handleShuffle = () => {
   
   if (confirm('重新洗牌会重置所有话题，确定吗？')) {
     shuffleCards(roomId.value)
+    refreshRoom()
   }
 }
 
@@ -212,7 +227,7 @@ const handleChoice = (choice: 'talk' | 'truth' | 'dare') => {
             <div 
               class="transition-all duration-300"
               :class="{
-                'scale-110': index === (currentRoom.currentTurn % currentRoom.members.length)
+                'scale-110': index === displayPlayerIndex
               }"
             >
               <MemberAvatar 
@@ -224,7 +239,7 @@ const handleChoice = (choice: 'talk' | 'truth' | 'dare') => {
               />
             </div>
             <div 
-              v-if="index === (currentRoom.currentTurn % currentRoom.members.length)"
+              v-if="index === displayPlayerIndex"
               class="absolute -top-2 left-1/2 transform -translate-x-1/2 text-lg animate-bounce"
             >
               👇

@@ -34,6 +34,7 @@ export function useGame() {
 
     isFlipping.value = true
     
+    const playerNameBeforeTurn = getCurrentPlayer(room)
     const topic = getCurrentTopic(room)
     if (topic) {
       topic.isFlipped = true
@@ -43,7 +44,7 @@ export function useGame() {
     room.currentTurn++
     saveRoom(room)
     
-    currentPlayer.value = getCurrentPlayer(room)
+    currentPlayer.value = playerNameBeforeTurn
     showTruthOrDare.value = true
 
     setTimeout(() => {
@@ -59,11 +60,14 @@ export function useGame() {
 
     const unflippedTopics = room.topics.filter(t => !t.isFlipped)
     
+    const playerName = getCurrentPlayer(room)
+    
     if (unflippedTopics.length > 0) {
       const randomTopic = getRandomItem(unflippedTopics)
       randomTopic.isFlipped = true
       currentTopic.value = randomTopic
       saveRoom(room)
+      currentPlayer.value = playerName
       return randomTopic
     } else {
       const backupQuestion = getRandomBackupQuestion()
@@ -79,6 +83,7 @@ export function useGame() {
         color: '#FFD93D'
       }
       currentTopic.value = emergencyTopic
+      currentPlayer.value = playerName
       return emergencyTopic
     }
   }
