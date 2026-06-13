@@ -50,7 +50,7 @@ export function useRoom() {
     return room
   }
 
-  const joinRoomByCode = (code: string, memberName: string): Room | null => {
+  const joinRoomByCode = (code: string, memberName: string): { room: Room; isGuest: boolean } | null => {
     const room = getRoomByCode(code.toUpperCase())
     if (!room) {
       error.value = '房间不存在'
@@ -60,22 +60,32 @@ export function useRoom() {
     const existingMember = room.members.find(m => m.name === memberName)
     if (existingMember) {
       currentRoom.value = room
-      return room
+      return { room, isGuest: existingMember.isGuest || false }
     }
+    
+    const isPlaying = room.status === 'playing'
     
     const newMember: Member = {
       id: generateId(),
       roomId: room.id,
       name: memberName,
       avatar: getRandomItem(AVATAR_EMOJIS),
-      isHost: false
+      isHost: false,
+      isGuest: isPlaying,
+      joinedAt: new Date().toISOString()
     }
     
-    room.members.push(newMember)
+    if (isPlaying) {
+      const insertIndex = (room.currentTurn % room.members.length) + 1
+      room.members.splice(insertIndex, 0, newMember)
+    } else {
+      room.members.push(newMember)
+    }
+    
     saveRoom(room)
     loadRooms()
     currentRoom.value = room
-    return room
+    return { room, isGuest: isPlaying }
   }
 
   const loadRoom = (id: string): boolean => {

@@ -10,7 +10,7 @@ import type { Topic } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const { currentRoom, resetGame, endGame, loadRooms, loadRoom } = useRoom()
+const { currentRoom, resetGame, endGame, loadRooms, loadRoom, joinRoomByCode, error } = useRoom()
 const { 
   currentTopic, 
   isFlipping, 
@@ -29,6 +29,39 @@ const { isRoomExpired } = useExpire()
 const roomId = computed(() => route.params.id as string)
 const showEndConfirm = ref(false)
 const showResetConfirm = ref(false)
+const showGuestJoinModal = ref(false)
+const guestJoinCode = ref('')
+const guestJoinName = ref('')
+const guestJoinToast = ref(false)
+const guestJoinToastName = ref('')
+
+const handleGuestJoin = () => {
+  if (!guestJoinCode.value.trim() || !guestJoinName.value.trim()) return
+  
+  const result = joinRoomByCode(guestJoinCode.value.trim(), guestJoinName.value.trim())
+  if (result) {
+    const { room, isGuest } = result
+    showGuestJoinModal.value = false
+    if (isGuest) {
+      guestJoinToastName.value = guestJoinName.value.trim()
+      guestJoinToast.value = true
+      setTimeout(() => {
+        guestJoinToast.value = false
+      }, 4000)
+    }
+    loadRoom(room.id)
+    guestJoinCode.value = ''
+    guestJoinName.value = ''
+    error.value = null
+  }
+}
+
+const closeGuestModal = () => {
+  showGuestJoinModal.value = false
+  guestJoinCode.value = ''
+  guestJoinName.value = ''
+  error.value = null
+}
 
 const currentPlayerName = computed(() => {
   if (currentRoom.value) {
@@ -141,7 +174,13 @@ const handleChoice = (choice: 'talk' | 'truth' | 'dare') => {
           <div class="text-sm text-white/60">🎴 游戏进行中</div>
         </div>
         
-        <div class="w-20"></div>
+        <button 
+          class="px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full text-sm font-medium flex items-center gap-1 hover:opacity-90 transition-opacity shadow-lg"
+          @click="showGuestJoinModal = true"
+        >
+          <span>⭐</span>
+          <span>嘉宾入场</span>
+        </button>
       </div>
 
       <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 mb-6">
@@ -180,6 +219,7 @@ const handleChoice = (choice: 'talk' | 'truth' | 'dare') => {
                 :name="member.name"
                 :avatar="member.avatar"
                 :is-host="member.isHost"
+                :is-guest="member.isGuest"
                 size="sm"
               />
             </div>
@@ -366,6 +406,79 @@ const handleChoice = (choice: 'talk' | 'truth' | 'dare') => {
           </button>
         </div>
       </div>
+    </div>
+
+    <div 
+      v-if="showGuestJoinModal"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="closeGuestModal"
+    >
+      <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
+        <div class="text-center mb-6">
+          <div class="text-5xl mb-3">⭐</div>
+          <h2 class="text-2xl font-bold text-gray-800">嘉宾临时入场</h2>
+          <p class="text-sm text-gray-500 mt-2">
+            游戏进行中也能加入！输入邀请码，插队下一位就轮到你～
+          </p>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              房间邀请码
+            </label>
+            <input 
+              v-model="guestJoinCode"
+              type="text" 
+              placeholder="输入 6 位邀请码"
+              maxlength="6"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all font-mono text-center text-xl tracking-widest uppercase"
+              @keyup.enter="handleGuestJoin"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              你的名字
+            </label>
+            <input 
+              v-model="guestJoinName"
+              type="text" 
+              placeholder="输入你的昵称"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 outline-none transition-all"
+              @keyup.enter="handleGuestJoin"
+            />
+          </div>
+        </div>
+        
+        <div v-if="error" class="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+          {{ error }}
+        </div>
+        
+        <div class="flex gap-3 mt-6">
+          <button 
+            class="flex-1 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+            @click="closeGuestModal"
+          >
+            取消
+          </button>
+          <button 
+            class="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+            :disabled="!guestJoinCode.trim() || !guestJoinName.trim()"
+            @click="handleGuestJoin"
+          >
+            ⭐ 插队入场
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div 
+      v-if="guestJoinToast"
+      class="fixed top-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 animate-bounce"
+    >
+      <span>🎉</span>
+      <span>嘉宾 {{ guestJoinToastName }} 已插队入场！下一位就轮到 TA～</span>
     </div>
   </div>
 </template>

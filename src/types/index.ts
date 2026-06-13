@@ -29,6 +29,8 @@ export interface Member {
   name: string
   avatar: string
   isHost: boolean
+  isGuest?: boolean
+  joinedAt?: string
 }
 
 export type TopicType = 'trouble' | 'music' | 'gossip' | 'recommend' | 'deep' | 'silly'

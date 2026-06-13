@@ -201,6 +201,7 @@ const goToGame = () => {
               :name="member.name"
               :avatar="member.avatar"
               :is-host="member.isHost"
+              :is-guest="member.isGuest"
               size="sm"
             />
           </div>

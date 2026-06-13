@@ -39,13 +39,28 @@ const handleCreateRoom = () => {
   router.push(`/room/${room.id}`)
 }
 
+const guestJoinSuccess = ref(false)
+const guestJoinName = ref('')
+
 const handleJoinRoom = () => {
   if (!joinCode.value.trim() || !joinName.value.trim()) return
   
-  const room = joinRoomByCode(joinCode.value.trim(), joinName.value.trim())
-  if (room) {
+  const result = joinRoomByCode(joinCode.value.trim(), joinName.value.trim())
+  if (result) {
+    const { room, isGuest } = result
     showJoinModal.value = false
-    router.push(`/room/${room.id}`)
+    if (isGuest) {
+      guestJoinName.value = joinName.value.trim()
+      guestJoinSuccess.value = true
+      setTimeout(() => {
+        guestJoinSuccess.value = false
+      }, 3000)
+    }
+    if (room.status === 'playing') {
+      router.push(`/room/${room.id}/game`)
+    } else {
+      router.push(`/room/${room.id}`)
+    }
   }
 }
 
@@ -268,6 +283,14 @@ const closeModals = () => {
     >
       <span>✓</span>
       <span>房间码已复制到剪贴板</span>
+    </div>
+
+    <div 
+      v-if="guestJoinSuccess"
+      class="fixed top-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 animate-bounce"
+    >
+      <span>⭐</span>
+      <span>欢迎 {{ guestJoinName }} 嘉宾插队入场！下一位就轮到你啦～</span>
     </div>
   </div>
 </template>
